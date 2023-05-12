@@ -1,6 +1,6 @@
 # 일기장 📔
 > CoreData, TextView를 활용해 사용자가 작성한 텍스트를 저장/공유하는 앱입니다.
-> * 주요 개념: `UITextView`, `UITableView`, `Factory Pattern`, `Localization`
+> * 주요 개념: `UITextView`, `UITableView`, `Factory Pattern`, `Localization`, `CoreLocation`, `CoreData`, `URLSession`
 > 
 > 프로젝트 기간: 2023.04.24 ~ 2023.05.12
 
@@ -21,7 +21,8 @@
 3. [실행화면](#-실행화면)
 4. [트러블 슈팅](#-트러블-슈팅)
 5. [핵심경험](#-핵심경험)
-6. [참고 링크](#-참고-링크)
+6. [팀 회고](#-팀-회고)
+7. [참고 링크](#-참고-링크)
 
 </br>
 
@@ -35,7 +36,12 @@
 - 2023.05.02 : 일기장 화면에서 편집이 종료될 경우 자동으로 CoreData에 업데이트하도록 구현
 - 2023.05.03 : ActivityView, Diary 삭제 기능, TableViewCell swipe 구현
 - 2023.05.04 : Factory 패턴 리팩토링, CoreData를 불러올때 날짜 내림차순으로 정렬 기능 추가
-- 2023.05.05 : README 수정, CoreData 관련 코드 리팩토링 중
+- 2023.05.05 : README 수정
+- 2023.05.08 : CoreData관련 객체 추상화
+- 2023.05.09 : OpenAPI를 활용하기 위한 Network 관련 객체 정의, CoreDataModel Weather Entity 추가
+- 2023.05.10 : CoreDataModel Entity 2가지의 CRUD를 함께 관리하는 DiaryDataManager 객체 정의
+- 2023.05.11 : Alert을 통한 Network Error Handling 구현, File Tree/코드 전반 Naming 수정 
+- 2023.05.12 : LocationHelper class 정의, 코드 컨벤션/README 수정
 
 </br>
 
@@ -44,46 +50,184 @@
 ## File Tree
 ```
 └── Diary
-    ├── App
-    │   ├── AppDelegate
-    │   └── SceneDelegate
+    ├── AppDelegate
+    ├── SceneDelegate
     ├── Model
-    │   └── DiarySample
-    ├── View
-    │   └── DiaryListCell
-    ├── Controller
-    │   ├── DiaryContentViewController
-    │   └── DiaryListViewController
+    │   ├── Diary
+    │   └── Weather
+    ├── DiaryContentView
+    │   ├── Helper
+    │   │   └── LocationHelper
+    │   └── ViewController
+    │       └── DiaryContentViewController
+    ├── DiaryListView
+    │   ├── Protocol
+    │   │   └── DiaryContentsViewDelegate
+    │   ├── View
+    │   │   └── DiaryListCell
+    │   └── ViewController
+    │       └── DiaryListViewController
     ├── Utility
     │   ├── AlertFactory
     │   │   ├── AlertController
-    │   │   │   ├── DiaryAlertMaker.swift
-    │   │   │   └── DiaryAlertFactoryService.swift
+    │   │   │   ├── DiaryAlertMaker
+    │   │   │   └── DiaryAlertFactory
     │   │   └── AlertData
-    │   │       ├── ActionSheetViewData.swift
-    │   │       ├── AlertViewData.swift
-    │   │       ├── DiaryAlertDataService.swift
-    │   │       └── DiaryAlertDataMaker.swift
-    │   ├── DateFormatter+diaryForm.swift
-    │   └── DiaryDecodeManager.swift
+    │   │       ├── ActionSheetViewData
+    │   │       ├── AlertViewData
+    │   │       ├── DiaryAlertDataFactory
+    │   │       └── DiaryAlertDataMaker
+    │   ├── DataProtocols
+    │   │   ├── DataAccessObject
+    │   │   └── DataTransferObject
+    │   └── Extension
+    │       └── DateFormatter+diaryForm
     ├── Resource
     │   ├── Assets
     │   └── LaunchScreen
-    ├── CoreData
-    │   ├── Diary+CoreDataClass
-    │   ├── Diary+CoreDataProperties
-    │   ├── Diary
-    │   └── DiaryCoreDataManager
+    ├── CoreData
+    │   ├── DiaryDAO
+    │   │   ├── Diary v2
+    │   │   └── Diary
+    │   ├── Entity
+    │   │   ├── DiaryDAO+CoreDataClass
+    │   │   ├── DiaryDAO+CoreDataProperties
+    │   │   ├── WeatherDAO+CoreDataClass
+    │   │   └── WeatherDAO+CoreDataProperties
+    │   ├── CoreDataManager
+    │   ├── CoreDataStack
+    │   ├── DiaryDataManager
+    │   └── SortDescription
+    ├── Network
+    │   ├── Endpoint
+    │   ├── NetworkError
+    │   ├── NetworkManager
+    │   ├── OpenWeatherAPI
+    │   ├── OpenWeatherService
+    │   └── Protocol
+    │       └── APIInfo
     └── Info.plist
 ```
 
-# 📱 실행화면
-<img src="https://i.imgur.com/N1dcUQE.gif" width="300">
+</br>
 
-<br/>
+# 📱 실행화면
+
+
+| **다이어리 생성** | **다이어리 삭제** | 
+| :--------: | :--------: |
+| <img src="https://hackmd.io/_uploads/rJpMz5o42.gif" width=200> | <img src="https://hackmd.io/_uploads/BktsN9o4h.gif" width=200>    | 
+
+| **다이어리 수정** | **액티비티 뷰** |
+| :--------: | :--------: |
+| <img src="https://hackmd.io/_uploads/BkHiE5sV3.gif" width=200> | <img src="https://hackmd.io/_uploads/rJl2sKoVn.gif" width=200> |
+
+
+</br>
 
 # 🚀 트러블 슈팅
-## 1️⃣ TextView가 Keyboard에 가려지는 문제
+
+</br>
+
+## 1️⃣ CoreData 모델에 Entity 추가시 생기는 코드 수정 문제
+
+### 🔍 문제점
+아래의 코드처럼 하나의 엔티티만 있을 때 새로운 엔티티가 추가 된다면 코어데이터 모델을 마이그레이션 한 후 메서드 파라미터부터 시작해서 모두 수정해주어야 했습니다. 또, Attribute가 추가되는 경우도 마찬가지 일 것이라 생각해서 모든 엔티티에 대한 CRUD가 가능하도록 코어데이터의 추상화가 필요하다고 느꼈습니다. 
+
+``` swift
+func createDiary(title: String, body: String, date: Double, id: UUID) -> Diary? {
+    if let diaryEntity {
+        let diary = Diary(entity: diaryEntity, insertInto: context)
+        diary.setValue(title, forKey: "title")
+        diary.setValue(date, forKey: "date")
+        diary.setValue(body, forKey: "body")
+        diary.setValue(id, forKey: "id")
+
+        saveContext()
+
+        return diary
+    }
+
+    return nil
+}
+```
+
+</br>
+
+### ⚒️ 해결방안
+우선 코어데이터 엔티티들을 `DataAccessObject` 프로토콜로 추상화 했습니다. 그리고 뷰컨트롤러에서 다루는 도메인 모델의 타입은 `DataTransferObject` 프로토콜로 추상화를 하고 제네릭을 활용해 `DataAccessObject`를 채택한 타입의 메타타입을 파라미터로 받아서 NSManagedObject를 생성하도록 했습니다.
+
+``` swift
+extension DataAccessObject {
+    static func object(entityName: String, context: NSManagedObjectContext) -> Self? {
+        guard let entityDescription = NSEntityDescription.entity(
+            forEntityName: entityName,
+            in: context
+        ) else { return nil }
+        guard let object = NSManagedObject(entity: entityDescription, insertInto: context) as? Self else { return nil }
+        
+        return object
+    }
+}
+```
+`DataAccessObject`의 extension에서 엔티티 객체를 반환해주는 타입메서드를 정의했습니다.
+
+``` swift
+func createDAO<DAO: DataAccessObject>(type: DAO.Type) -> DAO? {
+    guard let entityName = DAO.entity().name,
+          let object = DAO.object(entityName: entityName, context: storage.context) else { return nil }
+
+    return object
+}
+```
+NSManagedObject 타입 메서드인 `entity()`를 사용해 타입 이름을 가져오고, 정의해둔 타입메서드인 `object(entityName: , context: )`로 엔티티의 인스턴스를 생성할 수 있었습니다.
+
+</br>
+
+## 2️⃣ CoreData 모델에 Entity 추가에 따른 CRUD 문제
+### 🔍 문제점
+위에서 제네릭 + 프로토콜로 모든 엔티티에 대한 CRUD에 대응가능한 타입을 `CoreDataManager`라고 정의했습니다.
+
+하지만 relationship을 갖는 Entity가 추가되면 두 Entity의 DAO를 동시에 CRUD 할 수 없다는 문제점이 있었습니다.
+
+`CoreDataManager`의 제네릭 메서드는 하나의 DAO에 대한 CRUD만을 관리할 수 있기 때문입니다.
+
+</br>
+
+### ⚒️ 해결방안
+`CoreDataManager`를 프로퍼티로 갖는 `DiaryDataManager`라는 구체 타입을 정의해 뷰컨트롤러에서 두 가지 엔티티의 CRUD 및 relationship 설정을 동시에 관리할 수 있는 인터페이스를 제공하도록 하였습니다.
+
+``` swift
+func create(data: Diary) {
+    let diaryDAO = coreDataManager.createDAO(type: DiaryDAO.self)
+    let weatherDAO = coreDataManager.createDAO(type: WeatherDAO.self)
+
+    diaryDAO?.weather = weatherDAO
+    diaryDAO?.setValues(from: data)
+
+    coreDataManager.saveContext()
+}
+```
+일기장 생성을 하는 메서드에서는 `CoreDataManager`를 통해 `DiaryDAO`, `WeatherDAO` 엔티티를 만들어 값 세팅 및 relationship을 연결시켜줍니다. 
+
+``` swift
+func readAll() -> [Diary] {
+    let sortDescription = SortDescription(key: "date", ascending: false)
+    let diaryDAOList = coreDataManager.readAllDAO(type: DiaryDAO.self, sortDescription: sortDescription)
+    let diaryList = diaryDAOList.map { diaryDAO in
+        Diary(diaryDAO: diaryDAO)
+    }
+
+    return diaryList
+}
+```
+모든 일기장을 읽어오는 메서드는 뷰 컨트롤러에서 다루는 도메인 모델인 `Diary`로 변환하여 뷰 컨트롤러가 `DataAccessObject`에 대한 의존성을 갖지 않도록 해주었습니다.
+
+**DiaryDataManager를 정의하게 되면서 뷰 컨트롤러가 DataAccessObejct에 대한 의존성을 갖지 않게 되었습니다.**
+
+</br>
+
+## 3️⃣ TextView가 Keyboard에 가려지는 문제
 
 ### 🔍 문제점
 이미 작성되어 있는 일기를 편집할 때 키보드가 올라오면서 텍스트뷰의 내용이 가려지는 문제가 발생했습니다. 또한, 일기를 계속해서 작성할 때 줄바꿈을 하면 키보드에 의해 텍스트뷰가 가려지는 문제점이 있었습니다.
@@ -108,9 +252,6 @@ UIResponder에 이미 구현되어있는 keyboardWillShowNotification, keyboardW
 NotificationCenter를 이용하여 `UIResponder.keyboardWillShowNotification`과 `UIResponder.keyboardWillHideNotification` 이벤트가 발생할 때, 텍스트뷰의 contentInset을 설정해주었습니다.
 
 텍스트뷰는 스크롤뷰를 상속하고 있어서 contentInset 프로퍼티를 활용할 수 있었고, 키보드의 크기를 계산해서 contentInset의 바텀을 키보드 높이로 할당하여 이 방법으로 편집중인 텍스트가 가려지지 않도록 해주었습니다.
-
-
-
 
 </br>
 
@@ -188,8 +329,83 @@ Persistent container는 인스턴스는 프로퍼티로 persistentStoreCoordinat
     
 </details>
 
+<details>
+    <summary><big>✅ CoreData Migration</big></summary>
+    
+## CoreData Migration
+
+### Lightweight Migration
+- Attribute를 추가할 경우
+- Attribute를 삭제할 경우
+- 논옵셔널 Attribute를 옵셔널로 바꿀 경우
+- 옵셔널 Attribute를 논옵셔널로 바꾸고, 기본값을 정의할 경우
+- Entity명이나 프로퍼티명을 수정할 경우
+
+</br>
+
+**Lightweight Migration 하기**
+
+```swift
+let psc = NSPersistentStoreCoordinator(managedObjectModel: mom)
+let options = [NSMigratePersistentStoresAutomaticallyOption: true, NSInferMappingModelAutomaticallyOption: true]
+do {
+    try psc.addPersistentStore(ofType: NSSQLiteStoreType, configurationName: nil, at: storeURL, options: options)
+} catch {
+    fatalError("Failed to add persistent store: \(error)")
+}
+///
+
+let description = NSPersistentStoreDescription()
+description.shoudMigrateStoreAutomatically = true
+description.shouldInferMappingModelAutomatically = true
+container.persistentStoreDescriptions = [description]
+
+```
+Core Data가 실제로 마이그레이션 작업을 수행하지 않고 원본 모델과 대상 모델 간의 매핑 모델을 유추할 수 있는지 여부를 미리 확인하려면 NSMappingModel의 inferredMappingModel(forSourceModel:destinationModel:) 메소드를 사용할 수 있습니다. 이 메서드는 Core Data가 생성할 수 있는 경우 추론된 모델을 반환합니다. 그렇지 않으면 nil을 반환합니다.
+
+데이터 변경이 자동 마이그레이션 기능을 초과하는 경우 HeavyweightMigration(수동 마이그레이션이라고도 함)을 수행할 수 있습니다.
+
+</br>
+
+### Heavyweight Migration
+기본 조건: LightWeight Migration의 기능을 초과하는 작업의 경우 사용.
+
+- 데이터베이스의 정규화 / 일반화. 즉, 신규 엔티티의 생성 및 relationship 설정을 하는 경우
+- 데이터에 대한 중요한 Customizing을 수행하는 경우
+
+</br>
+
+</details>
+
+<details>
+    <summary><big>✅ CLLocationManager</big></summary>
+    
+## 유저에게 위치 권한을 얻는 과정
+    
+* 권한 요청 객체: CLLocationManager
+* 권한 요청 과정
+CLLocationManager Delegate 메서드를 활용해, 권한이 변경되었을 때 `locationManagerDidChangeAuthorization` 메서드 내에서 현재 `authorizationStatus` 를 확인하여 권한이 부여된 경우(case: authorizedWhenInUse, authorizedAlways) `startUpdatingLocation` 메서드를 수행하도록 하였습니다.
+`startUpdatingLocation`를 호출하면 수행되는 `didUpdateLocations` 메서드에서는 현재 위치를 가져와 적절한 처리를 해주었습니다.
+
+공식 문서의 유의 사항에 따라 앱 실행 직후 권한을 요청하기 보다는 Location Service를 이용하는 TextView 화면에 진입했을 때 권한을 요청하도록 설계했습니다.
+
+</details>
+
 ---
     
+</br>
+
+# 🫂 팀 회고
+### 우리팀이 잘한 점
+- 프로젝트 수행보다 중요 내용 학습에 집중한 점
+- 끝까지 모르는 부분에 대해서 해결하려고 노력하고 나름의 결론을 내린 점
+- 3주 동안 프로젝트를 진행하면서 지치는 시간도 있었지만 서로 응원하며 열심히 한 점
+
+### 우리팀이 노력할 점
+- 나중에 꼭 테스트 코드를 작성해서 테스트 해보자 !
+- 프로젝트가 종료된 이후에도 해결되지 않았던 문제에 대해서 고민해보자 !
+- 자연스러운 네이밍을 할 수 있도록 고민하자!
+
 </br>
 
 # 📚 참고 링크
@@ -203,3 +419,5 @@ Persistent container는 인스턴스는 프로퍼티로 persistentStoreCoordinat
 * [🍎Apple Docs - CoreData](https://developer.apple.com/documentation/coredata)
 * [🍎Apple Docs - UISwipeActionsConfiguration](https://developer.apple.com/documentation/uikit/uiswipeactionsconfiguration)
 * [🍎Apple Docs - UIContextualAction](https://developer.apple.com/documentation/uikit/uicontextualaction)
+* [🍎Apple Docs - Core Location](https://developer.apple.com/documentation/corelocation)
+* [🍎Apple Docs - Using Lightweight Migration](https://developer.apple.com/documentation/coredata/using_lightweight_migration)
