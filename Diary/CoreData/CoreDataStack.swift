@@ -14,7 +14,7 @@ final class CoreDataStack {
     private init() { }
     
     private var persistentContainer: NSPersistentContainer = {
-        let container = NSPersistentContainer(name: "DiaryDAO")
+        let container = NSPersistentContainer(name: "Diary")
         
         container.loadPersistentStores(completionHandler: { (_, error) in
             if let error = error as NSError? {
