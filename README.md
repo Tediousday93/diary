@@ -113,14 +113,13 @@
 
 # 📱 실행화면
 
-
 | **다이어리 생성** | **다이어리 삭제** | 
 | :--------: | :--------: |
-| <img src="https://hackmd.io/_uploads/rJpMz5o42.gif" width=200> | <img src="https://hackmd.io/_uploads/BktsN9o4h.gif" width=200>    | 
+| <img src="https://github.com/Tediousday93/diary/assets/114981173/a72a1c84-6a95-480b-80d3-a41e10da5c99" width=200> | <img src="https://github.com/Tediousday93/diary/assets/114981173/17cce3d2-3f80-4308-affd-bb118f41e0ff" width=200>    | 
 
 | **다이어리 수정** | **액티비티 뷰** |
 | :--------: | :--------: |
-| <img src="https://hackmd.io/_uploads/BkHiE5sV3.gif" width=200> | <img src="https://hackmd.io/_uploads/rJl2sKoVn.gif" width=200> |
+| <img src="https://github.com/Tediousday93/diary/assets/114981173/898a7508-25ec-410a-9916-036f6523bffb" width=200> | <img src="https://github.com/Tediousday93/diary/assets/114981173/72c487c4-1f53-47ac-b563-d01e55cf8199" width=200> |
 
 
 </br>
